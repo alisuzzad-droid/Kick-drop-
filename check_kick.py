@@ -3,12 +3,12 @@ import json
 import os
 from datetime import datetime
 
-# ===== আপনার তথ্য =====
-KICK_SESSION_TOKEN = "428436484%7CJg4kvSfD4mqNZHKoD34Eryk3kjfsYDtRck6jtgxh"
-KICK_SESSION = "eyJpdiI6InpNM2REM1BacmxmZ2FCVE1SWGdmN1E9PSIsInZhbHVlIjoiUUJtNitxT3BYQk56Q1Q1QTdHbUNsMFhNYW1yYXZUWHZmZjRpMmNralRlV0EzK1hGUHZha0xENGxxMS80NUIwNWROWEZCZEgxU2VLR202eW1LTnhFWm5wMXh3YWg1K3hlUXgwOFdMY2JGNGQzUTNHdFpFNHZ5Y0s0MS9hZk9JVC8iLCJtYWMiOiI3MzVjZWEzOTc2ODNhOTY4ZTViNjcyYzc4NGE5OWYwNzMyMmVkOWY5ZTJlMzdiMzc5Nzk1Zjg1YjJlNGQ0M2ExIiwidGFnIjoiIn0%3D"
-TELEGRAM_BOT_TOKEN = "8969698368:AAG52crkSkwsVEV6_m4i547AGWv6eoxUhLw"
-TELEGRAM_CHAT_ID = "8949091966"
-# ======================
+# ===== GitHub Secrets থেকে পড়া =====
+KICK_SESSION_TOKEN = os.environ.get("KICK_SESSION_TOKEN", "")
+KICK_SESSION = os.environ.get("KICK_SESSION", "")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
+# ====================================
 
 KICK_API = "https://web.kick.com/api/v1/drops/campaigns"
 SEEN_FILE = "seen_campaigns.json"
@@ -45,6 +45,10 @@ def send_telegram(msg):
 
 
 def check_campaigns():
+    if not KICK_SESSION_TOKEN or not TELEGRAM_BOT_TOKEN:
+        print("Missing secrets!")
+        return
+
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "application/json, text/plain, */*",
@@ -111,7 +115,6 @@ def check_campaigns():
             if len(rewards) > 5:
                 reward_names += f"\n  ... +{len(rewards)-5} more"
 
-            # status অনুযায়ী emoji
             if status == "active":
                 status_emoji = "🟢"
             elif status == "expired":
