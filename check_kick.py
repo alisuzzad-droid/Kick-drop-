@@ -84,9 +84,8 @@ def check_campaigns():
     else:
         campaigns = data
 
-    # শুধু active campaign
-    campaigns = [c for c in campaigns if c.get("status") == "active"]
-    print(f"Total active campaigns: {len(campaigns)}")
+    # সব campaign (active + expired) — কোনো filter নেই
+    print(f"Total campaigns received: {len(campaigns)}")
 
     seen = load_seen()
     new_found = []
@@ -104,6 +103,7 @@ def check_campaigns():
         for cid, c in new_found:
             title = c.get("name", "No title")
             org = (c.get("organization") or {}).get("name", "")
+            status = c.get("status", "unknown")
             starts = (c.get("starts_at") or "")[:16].replace("T", " ")
             ends = (c.get("ends_at") or "")[:16].replace("T", " ")
             rewards = c.get("rewards", [])
@@ -111,11 +111,20 @@ def check_campaigns():
             if len(rewards) > 5:
                 reward_names += f"\n  ... +{len(rewards)-5} more"
 
+            # status অনুযায়ী emoji
+            if status == "active":
+                status_emoji = "🟢"
+            elif status == "expired":
+                status_emoji = "🔴"
+            else:
+                status_emoji = "⚪"
+
             msg = (
                 f"🎯 <b>New Kick Campaign!</b>\n\n"
                 f"<b>{title}</b>\n"
                 f"🆔 <code>{cid}</code>\n"
                 f"🏢 {org}\n"
+                f"{status_emoji} Status: {status}\n"
                 f"▶️ Start: {starts} UTC\n"
                 f"⏹ End: {ends} UTC\n\n"
                 f"🎁 Rewards:\n{reward_names}\n\n"
@@ -123,11 +132,11 @@ def check_campaigns():
             )
             send_telegram(msg)
             seen.add(cid)
-            print("Sent:", title)
+            print("Sent:", title, "| status:", status)
 
         save_seen(seen)
     else:
-        print("No new active campaigns.")
+        print("No new campaigns.")
         send_telegram(
             f"🔍 <b>Checked Kick campaigns</b>\n"
             f"✅ No new campaign found\n\n"
