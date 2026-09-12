@@ -16,14 +16,17 @@ SEEN_FILE = "seen_campaigns.json"
 
 def load_seen():
     if os.path.exists(SEEN_FILE):
-        with open(SEEN_FILE, "r") as f:
-            return set(json.load(f))
+        try:
+            with open(SEEN_FILE, "r") as f:
+                return set(json.load(f))
+        except Exception:
+            return set()
     return set()
 
 
 def save_seen(seen):
     with open(SEEN_FILE, "w") as f:
-        json.dump(list(seen), f)
+        json.dump(sorted(list(seen)), f, indent=2)
 
 
 def send_telegram(msg):
@@ -36,7 +39,7 @@ def send_telegram(msg):
     }
     try:
         r = requests.post(url, json=payload, timeout=15)
-        print("Telegram response:", r.status_code)
+        print("Telegram status:", r.status_code)
     except Exception as e:
         print("Telegram error:", e)
 
@@ -53,59 +56,69 @@ def check_campaigns():
 
     try:
         r = requests.get(KICK_API, headers=headers, timeout=20)
-        print("Status:", r.status_code)
-        print("Response preview:", r.text[:500])
+        print("HTTP status:", r.status_code)
     except Exception as e:
         print("Request error:", e)
         return
 
     if r.status_code != 200:
-        print("Failed. Not 200.")
+        print("Bad status, aborting.")
+        print(r.text[:300])
         return
 
     try:
         data = r.json()
     except Exception as e:
-        print("JSON parse error:", e)
+        print("JSON error:", e)
         return
 
-    # response structure handle
-    if isinstance(data, list):
-        campaigns = data
-    elif isinstance(data, dict):
-        campaigns = data.get("data") or data.get("campaigns") or []
+    if isinstance(data, dict):
+        campaigns = data.get("data", [])
     else:
-        campaigns = []
+        campaigns = data
 
-    if not campaigns:
-        print("No campaigns in response.")
-        return
+    # ===== শুধু active campaign নাও =====
+    campaigns = [c for c in campaigns if c.get("status") == "active"]
+    print(f"Total active campaigns: {len(campaigns)}")
 
     seen = load_seen()
     new_found = []
 
     for c in campaigns:
-        cid = str(c.get("id") or c.get("slug") or c.get("title") or c.get("name"))
-        if cid not in seen:
-            seen.add(cid)
-            new_found.append(c)
+        cid = str(c.get("id") or c.get("name"))
+        if cid and cid not in seen:
+            new_found.append((cid, c))
+
+    print(f"New campaigns to notify: {len(new_found)}")
 
     if new_found:
-        for c in new_found:
-            title = c.get("title") or c.get("name") or "Unknown"
-            desc = (c.get("description") or "")[:200]
+        for cid, c in new_found:
+            title = c.get("name", "No title")
+            org = (c.get("organization") or {}).get("name", "")
+            starts = (c.get("starts_at") or "")[:16].replace("T", " ")
+            ends = (c.get("ends_at") or "")[:16].replace("T", " ")
+            rewards = c.get("rewards", [])
+            reward_names = "\n".join([f"  • {r.get('name','')}" for r in rewards[:5]])
+            if len(rewards) > 5:
+                reward_names += f"\n  ... +{len(rewards)-5} more"
+
             msg = (
                 f"🎯 <b>New Kick Campaign!</b>\n\n"
                 f"<b>{title}</b>\n"
-                f"{desc}\n\n"
-                f"🕒 {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}\n"
+                f"🏢 {org}\n"
+                f"▶️ Start: {starts} UTC\n"
+                f"⏹ End: {ends} UTC\n\n"
+                f"🎁 Rewards:\n{reward_names}\n\n"
                 f"🔗 https://kick.com/drops/campaigns"
             )
             send_telegram(msg)
+            seen.add(cid)
             print("Sent:", title)
+
+        # ===== শুধু সব মেসেজ পাঠানোর পর seen সেভ হবে =====
         save_seen(seen)
     else:
-        print("No new campaigns.")
+        print("No new active campaigns.")
 
 
 if __name__ == "__main__":
