@@ -10,7 +10,7 @@ TELEGRAM_BOT_TOKEN = "8969698368:AAG52crkSkwsVEV6_m4i547AGWv6eoxUhLw"
 TELEGRAM_CHAT_ID = "8949091966"
 # ======================
 
-KICK_API = "https://kick.com/api/v2/campaigns"
+KICK_API = "https://web.kick.com/api/v1/drops/campaigns"
 SEEN_FILE = "seen_campaigns.json"
 
 
