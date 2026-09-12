@@ -59,17 +59,24 @@ def check_campaigns():
         print("HTTP status:", r.status_code)
     except Exception as e:
         print("Request error:", e)
+        send_telegram(f"⚠️ <b>Kick check failed</b>\n\nNetwork error: {e}")
         return
 
     if r.status_code != 200:
         print("Bad status, aborting.")
         print(r.text[:300])
+        send_telegram(
+            f"⚠️ <b>Kick check failed</b>\n\n"
+            f"HTTP status: {r.status_code}\n"
+            f"Response: {r.text[:150]}"
+        )
         return
 
     try:
         data = r.json()
     except Exception as e:
         print("JSON error:", e)
+        send_telegram(f"⚠️ <b>Kick check failed</b>\n\nJSON parse error: {e}")
         return
 
     if isinstance(data, dict):
@@ -77,7 +84,7 @@ def check_campaigns():
     else:
         campaigns = data
 
-    # ===== শুধু active campaign নাও =====
+    # শুধু active campaign
     campaigns = [c for c in campaigns if c.get("status") == "active"]
     print(f"Total active campaigns: {len(campaigns)}")
 
@@ -90,6 +97,8 @@ def check_campaigns():
             new_found.append((cid, c))
 
     print(f"New campaigns to notify: {len(new_found)}")
+
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
 
     if new_found:
         for cid, c in new_found:
@@ -105,6 +114,7 @@ def check_campaigns():
             msg = (
                 f"🎯 <b>New Kick Campaign!</b>\n\n"
                 f"<b>{title}</b>\n"
+                f"🆔 <code>{cid}</code>\n"
                 f"🏢 {org}\n"
                 f"▶️ Start: {starts} UTC\n"
                 f"⏹ End: {ends} UTC\n\n"
@@ -115,10 +125,14 @@ def check_campaigns():
             seen.add(cid)
             print("Sent:", title)
 
-        # ===== শুধু সব মেসেজ পাঠানোর পর seen সেভ হবে =====
         save_seen(seen)
     else:
         print("No new active campaigns.")
+        send_telegram(
+            f"🔍 <b>Checked Kick campaigns</b>\n"
+            f"✅ No new campaign found\n\n"
+            f"🕒 {now}"
+        )
 
 
 if __name__ == "__main__":
