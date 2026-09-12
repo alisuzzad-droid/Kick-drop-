@@ -23,6 +23,11 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run checker
+        env:
+          KICK_SESSION_TOKEN: ${{ secrets.KICK_SESSION_TOKEN }}
+          KICK_SESSION: ${{ secrets.KICK_SESSION }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python check_kick.py
 
       - name: Commit seen file
